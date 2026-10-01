@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puissance 4 en ligne</title>
+<style>
+:root{--bg:#0e1c24;--board:#0f4c5c;--hole:#0a2f3a;--p0:#ef476f;--p1:#ffd166;--ink:#f3efe6;--mute:#8fa6ad}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Verdana,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:460px;padding:20px 14px 40px}
+h1{font-size:2.2rem;margin:8px 0 4px;letter-spacing:-.02em}
+h2{font-size:1rem;color:var(--mute);margin:20px 0 8px}
+p.sub{color:var(--mute);margin:0 0 20px}
+input[type=text]{width:100%;padding:14px;border-radius:10px;border:2px solid var(--board);background:var(--hole);color:var(--ink);font-size:1rem}
+select{width:100%;padding:12px;border-radius:10px;border:2px solid var(--board);background:var(--hole);color:var(--ink);font-size:1.1rem}
+button{font:inherit;cursor:pointer}
+.cta{width:100%;margin-top:18px;padding:14px;border:0;border-radius:10px;background:var(--p1);color:#1b1b1b;font-weight:700;font-size:1.05rem}
+.cta:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--p0);outline-offset:2px}
+.hidden{display:none!important}
+.avatars{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.ava{aspect-ratio:1;font-size:1.6rem;border-radius:10px;border:2px solid var(--board);background:var(--hole);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0}
+.ava.sel{border-color:var(--p1)}
+.ava img{width:100%;height:100%;object-fit:cover}
+.uploadRow{display:flex;align-items:center;gap:10px;margin-top:10px}
+.uploadRow label{color:var(--mute);font-size:.9rem;text-decoration:underline;cursor:pointer}
+.players{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.pcard{display:flex;align-items:center;gap:8px;font-weight:700}
+.pcard .av{font-size:1.5rem;width:1.8rem;text-align:center}
+.pcard img.av{width:1.8rem;height:1.8rem;border-radius:50%;object-fit:cover}
+.pcard .elo{color:var(--mute);font-weight:400;font-size:.85rem;display:block}
+.bubble{font-size:1.4rem;min-width:1.4rem}
+#board{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:var(--board);padding:8px;border-radius:14px}
+.cell{aspect-ratio:1;border-radius:50%;background:var(--hole);border:0;padding:0}
+.cell.p0{background:var(--p0)}.cell.p1{background:var(--p1)}
+#status{text-align:center;margin:12px 0;min-height:1.5em;font-weight:700}
+.row{display:flex;gap:6px;justify-content:center;margin-bottom:10px}
+.emo{font-size:1.4rem;background:var(--hole);border:0;border-radius:8px;padding:6px 10px}
+#log{height:110px;overflow-y:auto;background:var(--hole);border-radius:10px;padding:8px;font-size:.9rem;margin-bottom:8px}
+#log b{color:var(--mute)}
+#chatform{display:flex;gap:6px}
+#chatform input{flex:1;padding:10px}
+#chatform button{padding:0 16px;border:0;border-radius:10px;background:var(--board);color:var(--ink)}
+.opts{display:flex;gap:16px;justify-content:center;margin:14px 0;color:var(--mute);font-size:.9rem}
+.ghost{width:100%;padding:12px;border-radius:10px;border:2px solid var(--board);background:none;color:var(--ink)}
+@media (prefers-reduced-motion:no-preference){.cell{transition:background .2s}}
+</style>
+</head>
+<body>
+<main>
+  <section id="home">
+    <h1>Puissance 4</h1>
+    <p class="sub">Affronte un joueur du monde entier, en direct.</p>
+
+    <label for="name">Ton pseudo</label>
+    <input id="name" type="text" maxlength="16" placeholder="Ex. Camille" autocomplete="off">
+
+    <h2>Ton avatar</h2>
+    <div class="avatars" id="avatars"></div>
+    <div class="uploadRow">
+      <label for="photo">Utiliser une photo à moi</label>
+      <input id="photo" type="file" accept="image/*" class="hidden">
+    </div>
+
+    <h2>Ton pays</h2>
+    <select id="flag"></select>
+
+    <button class="cta" id="play">Trouver un adversaire</button>
+    <p id="homeMsg" class="sub" style="margin-top:14px"></p>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="players">
+      <span class="pcard"><span class="av" id="av0"></span><span><span id="n0"></span><span class="elo" id="elo0"></span></span><span class="bubble" id="b0"></span></span>
+      <span class="pcard"><span class="bubble" id="b1"></span><span style="text-align:right"><span id="n1"></span><span class="elo" id="elo1"></span></span><span class="av" id="av1"></span></span>
+    </div>
+    <div id="board" role="grid" aria-label="Grille de Puissance 4"></div>
+    <div id="status"></div>
+    <div class="row" id="emojis"></div>
+    <div id="chatbox">
+      <div id="log" aria-live="polite"></div>
+      <form id="chatform">
+        <input id="msg" type="text" maxlength="100" placeholder="Message (100 caractères max)" autocomplete="off">
+        <button type="submit">Envoyer</button>
+      </form>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="optChat" checked> Chat</label>
+      <label><input type="checkbox" id="optEmoji" checked> Émojis</label>
+    </div>
+    <button class="ghost hidden" id="again">Nouvelle partie</button>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const R = 6, C = 7, EMOJIS = ['😀','😂','😮','😡','👏','🤝'];
+let ws, me = 0, turn = 0, over = true, names = ['', ''];
+let myId = localStorage.getItem('p4_id') || null;
+let profile = { pseudo: '', avatar: '🦊', flag: '🏳️', elo: 1000 };
+
+function isCustom(a) { return typeof a === 'string' && a.startsWith('data:'); }
+
+async function loadProfile() {
+  const meta = await (await fetch('/api/meta')).json();
+  const p = await (await fetch('/api/profile' + (myId ? '?id=' + myId : ''))).json();
+  myId = p.id; localStorage.setItem('p4_id', myId);
+  profile = p;
+  $('#name').value = p.pseudo === 'Joueur' ? '' : p.pseudo;
+
+  const av = $('#avatars'); av.innerHTML = '';
+  meta.avatars.forEach((a) => {
+    const b = document.createElement('button');
+    b.className = 'ava' + (a === profile.avatar ? ' sel' : '');
+    b.textContent = a; b.dataset.value = a;
+    b.onclick = () => selectAvatar(a, b);
+    av.appendChild(b);
+  });
+  if (isCustom(profile.avatar)) addCustomAvatarButton(profile.avatar, true);
+
+  const sel = $('#flag'); sel.innerHTML = '';
+  meta.flags.forEach((f) => {
+    const o = document.createElement('option'); o.value = f; o.textContent = f;
+    if (f === profile.flag) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function selectAvatar(value, btn) {
+  profile.avatar = value;
+  [...$('#avatars').children].forEach((c) => c.classList.toggle('sel', c === btn));
+}
+function addCustomAvatarButton(dataUrl, selected) {
+  const b = document.createElement('button');
+  b.className = 'ava' + (selected ? ' sel' : '');
+  b.innerHTML = '<img src="' + dataUrl + '" alt="Ta photo">';
+  b.onclick = () => selectAvatar(dataUrl, b);
+  $('#avatars').appendChild(b);
+  if (selected) selectAvatar(dataUrl, b);
+}
+
+$('#photo').onchange = () => {
+  const file = $('#photo').files[0];
+  if (!file) return;
+  if (file.size > 400000) { alert('Cette photo est trop lourde, choisis-en une plus légère.'); return; }
+  const reader = new FileReader();
+  reader.onload = () => addCustomAvatarButton(reader.result, true);
+  reader.readAsDataURL(file);
+};
+
+function avatarMarkup(a) { return isCustom(a) ? '<img src="' + a + '" alt="">' : a; }
+
+const boardEl = $('#board');
+for (let i = 0; i < R * C; i++) {
+  const c = document.createElement('button');
+  c.className = 'cell'; c.dataset.col = i % C; c.setAttribute('aria-label', 'Colonne ' + (i % C + 1));
+  c.onclick = () => play(i % C);
+  boardEl.appendChild(c);
+}
+EMOJIS.forEach((e) => {
+  const b = document.createElement('button');
+  b.className = 'emo'; b.textContent = e;
+  b.onclick = () => send({ t: 'emoji', e });
+  $('#emojis').appendChild(b);
+});
+
+function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
+function cell(r, c) { return boardEl.children[r * C + c]; }
+function setStatus(t) { $('#status').textContent = t; }
+function refreshTurn() { setStatus(turn === me ? 'À toi de jouer !' : 'Tour de ' + names[turn] + '…'); }
+function play(col) { if (!over && turn === me) send({ t: 'play', col }); }
+
+async function join() {
+  profile.pseudo = $('#name').value.trim() || 'Joueur';
+  profile.flag = $('#flag').value;
+  await fetch('/api/profile', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: myId, pseudo: profile.pseudo, avatar: profile.avatar, flag: profile.flag })
+  });
+  const go = () => send({ t: 'join', id: myId });
+  if (ws && ws.readyState === 1) return go();
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onopen = go;
+  ws.onmessage = (e) => handle(JSON.parse(e.data));
+  ws.onclose = () => { over = true; setStatus('Connexion perdue. Recharge la page.'); $('#homeMsg').textContent = 'Connexion perdue. Recharge la page.'; };
+}
+
+function setPlayerCard(i, p) {
+  $('#av' + i).innerHTML = avatarMarkup(p.avatar) + ' ' + p.flag;
+  $('#n' + i).textContent = p.pseudo;
+  $('#elo' + i).textContent = 'Elo ' + p.elo;
+}
+
+function handle(m) {
+  if (m.t === 'wait') {
+    $('#homeMsg').textContent = 'Recherche d’un adversaire…';
+    $('#play').disabled = true;
+  } else if (m.t === 'start') {
+    me = m.me; turn = m.turn; over = false;
+    const you = m.you, opp = m.opp;
+    names = me === 0 ? [you.pseudo, opp.pseudo] : [opp.pseudo, you.pseudo];
+    setPlayerCard(me, you); setPlayerCard(1 - me, opp);
+    [...boardEl.children].forEach((c) => c.className = 'cell');
+    $('#log').innerHTML = '';
+    $('#home').classList.add('hidden'); $('#game').classList.remove('hidden');
+    $('#again').classList.add('hidden'); $('#play').disabled = false;
+    refreshTurn();
+  } else if (m.t === 'move') {
+    cell(m.row, m.col).classList.add('p' + m.p);
+    turn = m.turn; refreshTurn();
+  } else if (m.t === 'end') {
+    over = true;
+    if (m.elo) { $('#elo0').textContent = 'Elo ' + m.elo[0]; $('#elo1').textContent = 'Elo ' + m.elo[1]; if (me !== undefined) profile.elo = m.elo[me]; }
+    setStatus(m.winner === -1 ? 'Match nul.' :
+      m.winner === me ? (m.reason === 'left' ? 'Ton adversaire est parti. Tu gagnes !' : 'Bravo, tu as gagné !') :
+      names[m.winner] + ' a gagné.');
+    $('#again').classList.remove('hidden');
+  } else if (m.t === 'chat' && $('#optChat').checked) {
+    const p = document.createElement('div');
+    const b = document.createElement('b'); b.textContent = m.name + ' : ';
+    p.append(b, document.createTextNode(m.text));
+    $('#log').appendChild(p); $('#log').scrollTop = 1e6;
+  } else if (m.t === 'emoji' && $('#optEmoji').checked) {
+    const el = $('#b' + m.from); el.textContent = m.e;
+    setTimeout(() => { el.textContent = ''; }, 2500);
+  }
+}
+
+$('#play').onclick = join;
+$('#again').onclick = () => { $('#game').classList.add('hidden'); $('#home').classList.remove('hidden'); $('#homeMsg').textContent = ''; join(); };
+$('#chatform').onsubmit = (e) => {
+  e.preventDefault();
+  const text = $('#msg').value.trim();
+  if (text) send({ t: 'chat', text }); $('#msg').value = '';
+};
+$('#optChat').onchange = (e) => $('#chatbox').classList.toggle('hidden', !e.target.checked);
+$('#optEmoji').onchange = (e) => $('#emojis').classList.toggle('hidden', !e.target.checked);
+
+loadProfile();
+</script>
+</body>
+</html>
